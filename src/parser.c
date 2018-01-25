@@ -12,7 +12,7 @@ int chtml_parser_parse_file(const char* fn, chtml_element** root_element) {
 		fseek(file, 0, SEEK_END);
 		file_size = ftell(file);
 		fseek(file, 0, SEEK_SET);
-		content = (string) malloc(file_size);
+		content = (string) malloc(file_size+1);
 		fread(content, sizeof(char), file_size, file);
 		return_value = chtml_parser_parse_string(content, root_element);
 		free(content);
@@ -23,18 +23,32 @@ int chtml_parser_parse_file(const char* fn, chtml_element** root_element) {
 
 // parses html/xml/xhtml content
 
-int chtml_parser_parse_tag(const char* str, int start, int end) {
+int chtml_parser_parse_tag(const char* str, int start, int end, int* indent) {
 	int i;
-	printf("TAG: ");
+	if(str[start] == '!' || str[start] == '?') return 0;
+	if(str[start] == '/') {
+		*(indent) -= 1;
+		// get the name and remove the last element from the stack
+	}
+	
+	for(i = 0; i < *indent; i++) printf("    ");
+	printf("[");
 	for(i = start; i <= end; i++) {
 		putc(str[i], stdout);
 	}
-	printf("\n");
+	printf("]\n");
+	
+	if(str[start] != '/') {
+		// push the element on the stack
+		*(indent) += 1;
+	}
 	return 0;
 }
 
-int chtml_parser_parse_content(const char* str, int start, int end) {
+int chtml_parser_parse_content(const char* str, int start, int end, int* indent) {
 	int i;
+	// add the content to the current element being proccesed
+	for(i = 0; i < *indent; i++) printf("    ");
 	printf("CONTENT: [%d] -> ", end-start);
 	for(i = start; i <= end; i++) {
 		putc(str[i], stdout);
@@ -45,14 +59,15 @@ int chtml_parser_parse_content(const char* str, int start, int end) {
 }
 
 int chtml_parser_parse_string(const char* str, chtml_element** root_element) { 
-	int i, return_value = 0, line_number = 1, start, end;
+	int i, return_value = 0, line_number = 1, start, end, indent = 0;
 	CurrentParsingSignal = NormalParsingSignal;
+	
 	for(i = 0; str[i]; i++) {
 		if(str[i] == '<') {
 			if(CurrentParsingSignal == ContentParsingSignal) {
 				end = i-1;
 				if(end-start > 0)
-					chtml_parser_parse_content(str, start, end);
+					chtml_parser_parse_content(str, start, end, &indent);
 			}
 			CurrentParsingSignal = ElementTagParsingSignal;
 			start = i+1;
@@ -71,7 +86,7 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 				break;
 			}
 			end = i-1;
-			chtml_parser_parse_tag(str, start, end);
+			chtml_parser_parse_tag(str, start, end, &indent);
 			start = i+1;
 			continue;
 		} else if(str[i] == '!') {
@@ -86,9 +101,7 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 			if(CurrentParsingSignal == ElementTagParsingSignal) {
 				CurrentParsingSignal = XmlEncodingParsingSignal;
 			} else if(CurrentParsingSignal == XmlEncodingParsingSignal) {
-				CurrentParsingSignal = NormalParsingSignal;
-				++i;
-				continue;
+				CurrentParsingSignal = ElementTagParsingSignal;
 			} else {
 				fprintf(stderr, "Invalid character '?' at line %d\n", line_number);
 				return_value = 1;

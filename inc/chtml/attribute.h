@@ -10,9 +10,9 @@ typedef struct {
 	string value;
 } chtml_attribute;
 
-void chtml_attribute_init(chtml_attribute* );
-void chtml_attribute_set_key(chtml_attribute*, const char* );
-void chtml_attribute_set_value(chtml_attribute*, const char* );
-void chtml_attribute_delete(chtml_attribute* );
+void chtml_attribute_init(chtml_attribute** );
+void chtml_attribute_set_key(chtml_attribute**, const char* );
+void chtml_attribute_set_value(chtml_attribute**, const char* );
+void chtml_attribute_delete(chtml_attribute** );
 
 #endif

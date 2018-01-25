@@ -8,7 +8,7 @@ enum {
 	ElementTagParsingSignal,
 	ElementAttributeParsingSignal,
 	CommentParsingSignal,
-	ScriptParsingSignal, // treated as a comment for now
+	ScriptParsingSignal, // will be treated as a comment
 	ContentParsingSignal,
 	DoctypeParsingSignal,
 	XmlEncodingParsingSignal

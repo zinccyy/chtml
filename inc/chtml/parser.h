@@ -11,7 +11,7 @@ extern int errno;
 
 int chtml_parser_parse_file(const char* , chtml_element** );
 int chtml_parser_parse_string(const char* , chtml_element** );
-int chtml_parser_parse_tag(const char*, int, int);
-int chtml_parser_parse_content(const char*, int, int);
+int chtml_parser_parse_tag(const char*, int, int, int*);
+int chtml_parser_parse_content(const char*, int, int, int*);
 
 #endif
