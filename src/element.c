@@ -17,8 +17,8 @@ void chtml_element_set_tag(chtml_element** el, string t) {
 	strcpy((*el)->tag, t);
 }
 
-void chtml_element_add_content(chtml_element** el, string str) {
-	size_t str_s = strlen(str), curr_str_s;
+void chtml_element_add_content(chtml_element** el, string str, size_t str_s) {
+	size_t curr_str_s;
 	if((*el)->content == NULL) curr_str_s = 0;
 	else curr_str_s = strlen((*el)->content);
 	(*el)->content = (string) realloc((*el)->content, sizeof(char) * (curr_str_s + str_s + 1));

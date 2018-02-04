@@ -114,6 +114,7 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					// remove the last element from the stack
 					chtml_element_stack_pop(el_stack);
+					*current_element = chtml_element_stack_last(el_stack);
 				} else {
 					// create an element and add it to the stack
 					chtml_parser_add_element(current_element, el_stack, temp_word);
@@ -151,6 +152,7 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 					break;
 				}
 				chtml_element_stack_pop(el_stack);
+				*current_element = chtml_element_stack_last(el_stack);
 				break;
 			} else if(TagParsingSignal == GetAttributeValueParsingSignal) {
 				// error -> random '/'
@@ -171,6 +173,7 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 				chtml_parser_create_substring(str, temp_word, last, i);
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					chtml_element_stack_pop(el_stack);
+					*current_element = chtml_element_stack_last(el_stack);
 				} else {
 					chtml_parser_add_element(current_element, el_stack, temp_word);
 				}
@@ -181,7 +184,6 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 			
 		}
 	}
-	
 	/*for(i = 0; i < *indent; i++) printf("    ");
 	printf("[ ");
 	for(i = start+1; i <= end; i++) printf("%c", str[i]);
@@ -195,8 +197,33 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 }
 
 int chtml_parser_parse_content(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end) {
-	int i;
-	string content = (string) malloc(end-start+1);
+	int i, size = 0;
+	char last;
+	string content = (string) malloc(sizeof(char) * (end-start+1));
+	for(i = start; i <= end; i++) {
+		if(str[i] == '\n' || str[i] == '\t') {
+			if(i != start && last != '\n' && last != '\t' && last != ' ') {
+				content[size] = ' ';
+				size++;
+			}
+		} else {
+			if(str[i] == ' ') {
+				if(i != start && last != ' ' && last != '\t' && last != '\n') {
+					content[size] = str[i];
+					size++;
+				}
+			}
+			else { 
+				content[size] = str[i];
+				size++;
+			}
+		}
+		last = str[i];
+	}
+	content[size] = '\0';
+	chtml_element_add_content(current_element, content, size);
+	free(content);
+	/*string content = (string) malloc(end-start+1);
 	chtml_parser_create_substring(str, content, start, end+1);
 	//printf("CONTENT [%s]: %s\n", (*current_element)->tag, content);
 	chtml_element_add_content(current_element, content);

@@ -6,15 +6,15 @@ void printTree(chtml_element* root, int a) {
 	if(!root) return;
 	for(; el; el = el->next) {
 		for(i = 0; i < a; i++) printf("    ");
-		printf("%s | ", el->tag);
+		printf("%s [ ", el->tag);
 		if(el->attributes_size) {
 			for(i = 0; i < el->attributes_size; i++) {
-				printf("%s : %s | ", el->attributes[i]->key, el->attributes[i]->value);
+				printf("%s::'%s' ", el->attributes[i]->key, el->attributes[i]->value);
 			}
 		}
-		printf("\n");
+		printf("]\n");
 		for(i = 0; i < a; i++) printf("    ");
-		printf("CONTENT [%s] : %s\n", el->tag, el->content);
+		printf("CONTENT : %s\n", el->content);
 		printTree(el->child, a+1);
 	}
 }
