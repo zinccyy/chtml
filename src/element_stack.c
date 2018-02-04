@@ -11,6 +11,10 @@ void chtml_element_stack_push(chtml_element_stack* stack, chtml_element* el) {
 	stack->elements_size += 1;
 }
 
+chtml_element* chtml_element_stack_last(chtml_element_stack* stack) {
+	return (stack->elements_size)? stack->elements[stack->elements_size-1] : NULL;
+}
+
 chtml_element* chtml_element_stack_pop(chtml_element_stack* stack) {
 	chtml_element* el = NULL;
 	if(stack->elements_size) {

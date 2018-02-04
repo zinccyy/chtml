@@ -9,6 +9,7 @@ typedef struct {
 } chtml_element_stack;
 
 void chtml_element_stack_init(chtml_element_stack* );
+chtml_element* chtml_element_stack_last(chtml_element_stack* );
 void chtml_element_stack_push(chtml_element_stack*, chtml_element* );
 chtml_element* chtml_element_stack_pop(chtml_element_stack* );
 void chtml_element_stack_delete(chtml_element_stack* );

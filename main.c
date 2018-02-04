@@ -1,5 +1,16 @@
 #include <chtml.h>
 
+void printTree(chtml_element* root, int a) {
+	int i, j;
+	chtml_element* el = root;
+	if(!root) return;
+	for(; el; el = el->next) {
+		for(i = 0; i < a; i++) printf("    ");
+		printf("%s\n", el->tag);
+		printTree(el->child, a+1);
+	}
+}
+
 int main(int argc, char** argv) 
 {
 	/*chtml_attribute* attr;
@@ -34,6 +45,7 @@ int main(int argc, char** argv)
 	if(argc > 1) {
 		chtml_parser_parse_file(argv[1], &root);
 	}
-	chtml_element_delete(&root);
+	printTree(root, 0);
+	chtml_element_delete(&root, 0);
 	return 0;
 }

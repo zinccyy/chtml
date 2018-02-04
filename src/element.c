@@ -32,10 +32,11 @@ void chtml_element_add_attribute(chtml_element** el, chtml_attribute** attr) {
 	(*el)->attributes_size+=1;
 }
 
-void chtml_element_delete(chtml_element** el) {
+void chtml_element_delete(chtml_element** el, int a) {
 	if(*el == NULL) return;
-	chtml_element_delete(&(*el)->child);
-	chtml_element_delete(&(*el)->next);
+	//printf("RELEASING: %d, %s\n", a, (*el)->tag);
+	chtml_element_delete(&(*el)->child, a+1);
+	chtml_element_delete(&(*el)->next, a);
 	if((*el)->attributes) {
 		for(int i = 0; i < (*el)->attributes_size; i++) 
 			chtml_attribute_delete(&(*el)->attributes[i]);
@@ -43,7 +44,8 @@ void chtml_element_delete(chtml_element** el) {
 	}
 	if((*el)->content != NULL)
 		free((*el)->content);
-	if((*el)->tag != NULL) 
+	if((*el)->tag != NULL)  {
 		free((*el)->tag);
+	}
 	free(*el);
 }
