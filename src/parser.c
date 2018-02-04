@@ -31,6 +31,7 @@ void chtml_parser_create_substring(const char* str, string temp, int s, int e) {
 	int i;
 	for(i = 0; i < e-s; i++)
 		temp[i] = str[i+s];
+	temp[i] = '\0';
 }
 
 int chtml_parser_add_element(chtml_element** current_element, chtml_element_stack* el_stack, string name) {
@@ -51,11 +52,15 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element_stac
 	return 0;
 }
 
+int chtml_parser_add_empty_element(chtml_element** current_element, chtml_element_stack* el_stack, string name) {
+	return 0;
+}
 
-int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end, int* indent) { // indent is used for tests
-	int i, last, j;
-	string temp_word, temp_string = NULL, el_name;
-	
+int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end, int* line_number) {
+	int i, last, j, ret_value = 0;
+	string temp_word, temp_string = NULL;
+	chtml_attribute* temp_attr;
+	// TODO -> add attributes and improve error checking
 	
 	if(str[start+1] == '!' || str[start+1] == '?') return 0;
 
@@ -66,6 +71,7 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 		GetStringEndParsingSignal,
 		GetEndTagNameParsingSignal
 	} TagParsingSignal = GetNameTagParsingSignal;
+	
 	int endTag = 0;
 	for(i = start+1; i <= end; i++) {
 		if(str[i] != ' ') {
@@ -82,8 +88,22 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 		if(str[i] == '\"') {
 			if(TagParsingSignal == GetStringEndParsingSignal) {
 				// close the string and add an attribute
+				temp_string = (string) malloc(sizeof(char) * (i-last));
+				chtml_parser_create_substring(str, temp_string, last, i);
+				// create an attribute and add it to the current element
+				chtml_attribute_init(&temp_attr);
+				chtml_attribute_set_key(&temp_attr, temp_word);
+				chtml_attribute_set_value(&temp_attr, temp_string);
+				chtml_element_add_attribute(current_element, &temp_attr);
+				free(temp_string);
+				free(temp_word);
+				TagParsingSignal = GetAttributeNameParsingSignal;
+				last = i+1;
+				continue;
 			} else if(TagParsingSignal == GetAttributeValueParsingSignal) {
 				// init temp_string and add characters to it until the end is reached
+				last = i+1;
+				TagParsingSignal = GetStringEndParsingSignal;
 			} else {
 				// error -> random string
 			}
@@ -94,29 +114,55 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					// remove the last element from the stack
 					chtml_element_stack_pop(el_stack);
-					//printf("End ");
 				} else {
 					// create an element and add it to the stack
 					chtml_parser_add_element(current_element, el_stack, temp_word);
 				}
-				//printf("Name: %s\n", temp_word);
 				free(temp_word);
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					break;
 				}
 				TagParsingSignal = GetAttributeNameParsingSignal;
-			} else {
+				++i;
+				last = i;
+			} else if(TagParsingSignal == GetAttributeNameParsingSignal) {
 				// do nothing
+				if(i-last) {
+					// error -> example: <html attr = ... <-- attr __space__ 
+				} else {
+					last = i+1;
+					continue;
+				}
 			}
 		} else if(str[i] == '/') {
 			// empty element -> create an element without content
 			if(TagParsingSignal == GetNameTagParsingSignal) {
+				temp_word = (string) malloc(sizeof(char) * (i-last));
+				chtml_parser_create_substring(str, temp_word, last, i);
+				chtml_parser_add_element(current_element, el_stack, temp_word);
+				chtml_element_stack_pop(el_stack); // pop the created element from the stack and end
+				free(temp_word);
+				break;
 			} else if(TagParsingSignal == GetAttributeNameParsingSignal) {
-			} else {
+				// after adding all attributes, pop the empty element from the stack and end the loop
+				if(i-last) {
+					fprintf(stderr, "Error at line %d -> random '/' character.\n", *line_number);
+					ret_value = 1;
+					break;
+				}
+				chtml_element_stack_pop(el_stack);
+				break;
+			} else if(TagParsingSignal == GetAttributeValueParsingSignal) {
 				// error -> random '/'
+				fprintf(stderr, "Error at line %d -> random '/' character.\n", *line_number);
+				ret_value = 1;
+				break;
 			}
 		} else if(str[i] == '=') {
 			if(TagParsingSignal == GetAttributeNameParsingSignal) {
+				temp_word = (string)malloc(sizeof(char) * (i-last) );
+				chtml_parser_create_substring(str, temp_word, last, i);
+				TagParsingSignal = GetAttributeValueParsingSignal;
 			} else if(TagParsingSignal == GetAttributeValueParsingSignal) {
 			} 
 		} else if(str[i] == '>') {
@@ -124,17 +170,15 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 				temp_word = (string) malloc(sizeof(char) * (i-last));
 				chtml_parser_create_substring(str, temp_word, last, i);
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
-					//printf("End ");
 					chtml_element_stack_pop(el_stack);
 				} else {
 					chtml_parser_add_element(current_element, el_stack, temp_word);
 				}
-				//printf("Name: %s\n", temp_word);
-				TagParsingSignal = GetAttributeNameParsingSignal;
 				free(temp_word);
+			} else {
 			}
 		} else {
-		
+			
 		}
 	}
 	
@@ -147,19 +191,24 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 		// push the element on the stack
 		*(indent) += 1;
 	}*/
-	return 0;
+	return ret_value;
 }
 
-int chtml_parser_parse_content(chtml_element** current_element, const char* str, int start, int end, int* indent) {
+int chtml_parser_parse_content(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end) {
 	int i;
+	string content = (string) malloc(end-start+1);
+	chtml_parser_create_substring(str, content, start, end+1);
+	//printf("CONTENT [%s]: %s\n", (*current_element)->tag, content);
+	chtml_element_add_content(current_element, content);
+	free(content);
 	// add the content to the current element being proccesed
-	for(i = 0; i < *indent; i++) printf("    ");
+	/*for(i = 0; i < *indent; i++) printf("    ");
 	printf("CONTENT: [%d] -> ", end-start);
 	for(i = start; i <= end; i++) {
 		putc(str[i], stdout);
 	}
 	if(str[i-1] != '\n')
-		printf("\n");
+		printf("\n");*/
 	return 0;
 }
 
@@ -178,7 +227,7 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 			if(CurrentParsingSignal == ContentParsingSignal) {
 				end = i-1;
 				if(end-start > 0) {
-					chtml_parser_parse_content(current_element, str, start, end, &indent);
+					chtml_parser_parse_content(current_element, &el_stack, str, start, end);
 					// parse content and set signal to add a child element
 				}
 			}
@@ -199,7 +248,10 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 				break;
 			}
 			end = i;
-			chtml_parser_parse_tag(current_element, &el_stack, str, start, end, &indent);
+			if(chtml_parser_parse_tag(current_element, &el_stack, str, start, end, &line_number)) {
+				return_value = 1;
+				break;
+			}
 			start = i+1;
 			if(!root_bkp && *current_element) {
 				root_bkp = *current_element;

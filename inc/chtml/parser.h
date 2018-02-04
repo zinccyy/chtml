@@ -13,6 +13,6 @@ int chtml_parser_parse_file(const char* , chtml_element** );
 int chtml_parser_parse_string(const char* , chtml_element** );
 int chtml_parser_parse_tag(chtml_element** , chtml_element_stack*, const char*, int, int, int*);
 int chtml_parser_add_element(chtml_element**, chtml_element_stack*, string );
-int chtml_parser_parse_content(chtml_element**, const char*, int, int, int*);
+int chtml_parser_parse_content(chtml_element**, chtml_element_stack*, const char*, int, int);
 
 #endif
