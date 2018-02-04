@@ -52,10 +52,6 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element_stac
 	return 0;
 }
 
-int chtml_parser_add_empty_element(chtml_element** current_element, chtml_element_stack* el_stack, string name) {
-	return 0;
-}
-
 int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end, int* line_number) {
 	int i, last, j, ret_value = 0;
 	string temp_word, temp_string = NULL;
