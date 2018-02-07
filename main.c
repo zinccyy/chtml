@@ -23,8 +23,7 @@ int main(int argc, char** argv)
 {
 	chtml_element* root;
 	if(argc > 1) {
-		chtml_parser_parse_file(argv[1], &root);
-		//printTree(root, 0);
+		chtml_parser_parse_file(argv[1], &root); //printTree(root, 0);
 	}
 	chtml_element_delete(&root);
 	return 0;
