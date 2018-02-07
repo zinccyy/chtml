@@ -3,7 +3,7 @@
 
 typedef char* string;
 
-enum {
+enum ParsingSignal {
 	NormalParsingSignal,
 	ElementTagParsingSignal,
 	ElementAttributeParsingSignal,
@@ -12,6 +12,6 @@ enum {
 	ContentParsingSignal,
 	DoctypeParsingSignal,
 	XmlEncodingParsingSignal
-} CurrentParsingSignal;
+};
 
 #endif

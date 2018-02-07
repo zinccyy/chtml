@@ -52,13 +52,16 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element_stac
 	return 0;
 }
 
-int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end, int* line_number) {
+int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int* end, int* line_number) {
 	int i, last, j, ret_value = 0;
 	string temp_word, temp_string = NULL;
 	chtml_attribute* temp_attr;
 	// TODO -> add attributes and improve error checking
-	
-	if(str[start+1] == '!' || str[start+1] == '?') return 0;
+	if(str[start] == '!' || str[start] == '?') {
+		for(i = start+1; str[i] && str[i] != '>'; ++i); // if end of a tag is not reached, loop till the end
+		*end = i;
+		return 0;
+	}
 
 	enum {
 		GetNameTagParsingSignal,
@@ -68,19 +71,15 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 		GetEndTagNameParsingSignal
 	} TagParsingSignal = GetNameTagParsingSignal;
 	
-	int endTag = 0;
-	for(i = start+1; i <= end; i++) {
-		if(str[i] != ' ') {
-			if(str[i] == '/') endTag = 1;
+	for(i = start; str[i]; i++)
+		if(str[i] != ' ') 
 			break;
-		}
-	}
 	if(str[i] == '/') {
 		++i;
 		TagParsingSignal = GetEndTagNameParsingSignal;
 	}
 	
-	for(last = i; i <= end; i++) {
+	for(last = i; str[i]; i++) {
 		if(str[i] == '\"') {
 			if(TagParsingSignal == GetStringEndParsingSignal) {
 				// close the string and add an attribute
@@ -176,19 +175,15 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack*
 				free(temp_word);
 			} else {
 			}
+			break;
+		} else if(str[i] == '<') {
+			// error -> element in an element
 		} else {
-			
+		
 		}
 	}
-	/*for(i = 0; i < *indent; i++) printf("    ");
-	printf("[ ");
-	for(i = start+1; i <= end; i++) printf("%c", str[i]);
-	printf(" ]\n");
-	
-	if(str[start+1] != '/') {
-		// push the element on the stack
-		*(indent) += 1;
-	}*/
+	for(; str[i] && str[i] != '>'; ++i); // if end of a tag is not reached, loop till the end
+	*end = i;
 	return ret_value;
 }
 
@@ -196,7 +191,7 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element_st
 	int i, size = 0;
 	char last;
 	string content = (string) malloc(sizeof(char) * (end-start+1));
-	for(i = start; i <= end; i++) {
+	for(i = start; i < end; i++) {
 		if(str[i] == '\n' || str[i] == '\t') {
 			if(i != start && last != '\n' && last != '\t' && last != ' ') {
 				content[size] = ' ';
@@ -217,21 +212,9 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element_st
 		last = str[i];
 	}
 	content[size] = '\0';
-	chtml_element_add_content(current_element, content, size);
+	if(size)
+		chtml_element_add_content(current_element, content, size);
 	free(content);
-	/*string content = (string) malloc(end-start+1);
-	chtml_parser_create_substring(str, content, start, end+1);
-	//printf("CONTENT [%s]: %s\n", (*current_element)->tag, content);
-	chtml_element_add_content(current_element, content);
-	free(content);
-	// add the content to the current element being proccesed
-	/*for(i = 0; i < *indent; i++) printf("    ");
-	printf("CONTENT: [%d] -> ", end-start);
-	for(i = start; i <= end; i++) {
-		putc(str[i], stdout);
-	}
-	if(str[i-1] != '\n')
-		printf("\n");*/
 	return 0;
 }
 
@@ -243,65 +226,47 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 	chtml_element** current_element = root_element;
 	
 	chtml_element_stack_init(&el_stack);
-	CurrentParsingSignal = NormalParsingSignal;
+	enum ParsingSignal CurrentParsingSignal = NormalParsingSignal;
+	enum ParsingSignal LastParsingSignal = NormalParsingSignal; // used for comments
 	
 	for(i = 0; str[i]; i++) {
 		if(str[i] == '<') {
-			if(CurrentParsingSignal == ContentParsingSignal) {
-				end = i-1;
-				if(end-start > 0) {
-					chtml_parser_parse_content(current_element, &el_stack, str, start, end);
-					// parse content and set signal to add a child element
+			if(CurrentParsingSignal != CommentParsingSignal) {
+				// check for comment
+				if(str[i+1] == '!' && str[i+2] == '-' && str[i+3] == '-') {
+					LastParsingSignal = CurrentParsingSignal;
+					CurrentParsingSignal = CommentParsingSignal;
+					printf("PARSING COMMENT\n");
+					i+= 3;
+				} else {
+					end = i;
+					if(end-start > 0 && *current_element != NULL) {
+						chtml_parser_parse_content(current_element, &el_stack, str, start, end);
+					}
+					start = i+1;
+					if(chtml_parser_parse_tag(current_element, &el_stack, str, start, &end, &line_number)) {
+						return_value = 1;
+						break;
+					}
+					CurrentParsingSignal = ContentParsingSignal;
+					start = end+1;
+					i = end;
+					if(!root_bkp && *current_element) { // if root is created store its pointer into a backup for later access
+						root_bkp = *current_element;
+					}
 				}
-			}
-			CurrentParsingSignal = ElementTagParsingSignal;
-			start = i;
-			continue;
-		} else if(str[i] == '>') {
-			if(CurrentParsingSignal == DoctypeParsingSignal) {
-				CurrentParsingSignal = ContentParsingSignal;
-				//continue;
-			} else if(CurrentParsingSignal == ElementTagParsingSignal) {
-				// parse element tag and add an element to elements
-				CurrentParsingSignal = ContentParsingSignal;
-				//continue;
-			} else if(CurrentParsingSignal == XmlEncodingParsingSignal) {
-				fprintf(stderr, "Tag closed and xml encoding not finished at line %d.\n", line_number);
-				return_value = 1;
-				break;
-			}
-			end = i;
-			if(chtml_parser_parse_tag(current_element, &el_stack, str, start, end, &line_number)) {
-				return_value = 1;
-				break;
-			}
-			start = i+1;
-			if(!root_bkp && *current_element) {
-				root_bkp = *current_element;
-			}
-			continue;
-		} else if(str[i] == '!') {
-			if(CurrentParsingSignal == ElementTagParsingSignal) {
-				CurrentParsingSignal = DoctypeParsingSignal;
-			} else if(CurrentParsingSignal == NormalParsingSignal) {
-				fprintf(stderr, "Invalid character '!' at line %d\n", line_number);
-				return_value = 1;
-				break;
-			}
-		} else if(str[i] == '?') {
-			if(CurrentParsingSignal == ElementTagParsingSignal) {
-				CurrentParsingSignal = XmlEncodingParsingSignal;
-			} else if(CurrentParsingSignal == XmlEncodingParsingSignal) {
-				CurrentParsingSignal = ElementTagParsingSignal;
-			} else {
-				fprintf(stderr, "Invalid character '?' at line %d\n", line_number);
-				return_value = 1;
-				break;
 			}
 		} else if(str[i] == '\n') {
 			line_number++;
+		} else if(str[i] == '-' && CurrentParsingSignal == CommentParsingSignal) {
+			if(str[i+1] == '-' && str[i+2] == '>') {
+				i += 2;
+				CurrentParsingSignal = LastParsingSignal;
+				start = i+1;
+			}
 		}
 	}
+	
 	*root_element = root_bkp;
 	chtml_element_stack_delete(&el_stack);
 	return return_value;
