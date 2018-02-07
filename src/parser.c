@@ -41,8 +41,8 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element_stac
 	if(el_stack->elements_size) { // check if the last element on the stack has children and if so, add the new element as the next of the last child
 		chtml_element* last = chtml_element_stack_last(el_stack);
 		if(last->child) {
-			for(itr_element = last->child; itr_element->next; itr_element = itr_element->next);
-				itr_element->next = el;
+			for(itr_element = last->child; itr_element->next; itr_element = itr_element->next); // slow
+			itr_element->next = el;
 		} else last->child = el;
 						
 	}
@@ -53,7 +53,7 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element_stac
 }
 
 int chtml_parser_parse_tag(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int* end, int* line_number) {
-	int i, last, j, ret_value = 0;
+	int i, last, ret_value = 0;
 	string temp_word, temp_string = NULL;
 	chtml_attribute* temp_attr;
 	// TODO -> add attributes and improve error checking
@@ -220,7 +220,7 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element_st
 
 int chtml_parser_parse_string(const char* str, chtml_element** root_element) { 
 	*root_element = NULL;
-	int i, return_value = 0, line_number = 1, start, end, indent = 0;
+	int i, return_value = 0, line_number = 1, start, end;
 	chtml_element_stack el_stack;
 	chtml_element* root_bkp = *root_element;
 	chtml_element** current_element = root_element;
@@ -236,7 +236,6 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 				if(str[i+1] == '!' && str[i+2] == '-' && str[i+3] == '-') {
 					LastParsingSignal = CurrentParsingSignal;
 					CurrentParsingSignal = CommentParsingSignal;
-					printf("PARSING COMMENT\n");
 					i+= 3;
 				} else {
 					end = i;
@@ -266,7 +265,6 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 			}
 		}
 	}
-	
 	*root_element = root_bkp;
 	chtml_element_stack_delete(&el_stack);
 	return return_value;

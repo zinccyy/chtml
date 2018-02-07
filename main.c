@@ -1,7 +1,7 @@
 #include <chtml.h>
 
 void printTree(chtml_element* root, int a) {
-	int i, j;
+	int i;
 	chtml_element* el = root;
 	if(!root) return;
 	for(; el; el = el->next) {
@@ -23,7 +23,8 @@ int main(int argc, char** argv)
 {
 	chtml_element* root;
 	if(argc > 1) {
-		if(!chtml_parser_parse_file(argv[1], &root)) printTree(root, 0);
+		chtml_parser_parse_file(argv[1], &root);
+		//printTree(root, 0);
 	}
 	chtml_element_delete(&root);
 	return 0;
