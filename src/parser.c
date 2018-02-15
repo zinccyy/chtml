@@ -37,7 +37,8 @@ void chtml_parser_create_substring(const char* str, string temp, int s, int e) {
 int chtml_parser_add_element(chtml_element** current_element, chtml_element** last_element, chtml_element_stack* el_stack, string name) {
 	chtml_element* el;
 	chtml_element_init(&el);
-	chtml_element_set_tag(&el, name);
+	//chtml_element_set_tag(&el, name);
+	el->tag = (char*) name;
 
 	if(el_stack->elements_size) { // check if the last element on the stack has children and if so, add the new element as the next of the last child
 		chtml_element* last = chtml_element_stack_last(el_stack);
@@ -53,7 +54,7 @@ int chtml_parser_add_element(chtml_element** current_element, chtml_element** la
 
 int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last_element, chtml_element_stack* el_stack, const char* str, int start, int* end, int* line_number) {
 	int i, last, ret_value = 0;
-	string temp_word = NULL, temp_string = NULL;
+	string temp_word = NULL;
 	chtml_attribute* temp_attr;
 
 	if(str[start] == '!' || str[start] == '?') {
@@ -82,15 +83,9 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 		if(str[i] == '\"') {
 			if(TagParsingSignal == GetStringEndParsingSignal) {
 				// close the string and add an attribute
-				temp_string = (string) malloc(sizeof(char) * (i-last+1));
-				chtml_parser_create_substring(str, temp_string, last, i);
-				// create an attribute and add it to the current element
-				chtml_attribute_init(&temp_attr);
-				chtml_attribute_set_key(&temp_attr, temp_word);
-				chtml_attribute_set_value(&temp_attr, temp_string);
+				temp_attr->value = (string) malloc(sizeof(char) * (i-last+1));
+				chtml_parser_create_substring(str, temp_attr->value, last, i);
 				chtml_element_add_attribute(current_element, &temp_attr);
-				free(temp_string);
-				free(temp_word);
 				TagParsingSignal = GetAttributeNameParsingSignal;
 				last = i+1;
 				continue;
@@ -113,7 +108,6 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 					// create an element and add it to the stack
 					chtml_parser_add_element(current_element, last_element, el_stack, temp_word);
 				}
-				free(temp_word);
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					break;
 				}
@@ -136,7 +130,6 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 				chtml_parser_create_substring(str, temp_word, last, i);
 				chtml_parser_add_element(current_element, last_element, el_stack, temp_word);
 				*last_element = chtml_element_stack_pop(el_stack); // pop the created element from the stack and end
-				free(temp_word);
 				break;
 			} else if(TagParsingSignal == GetAttributeNameParsingSignal) {
 				// after adding all attributes, pop the empty element from the stack and end the loop
@@ -156,8 +149,9 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 			}
 		} else if(str[i] == '=') {
 			if(TagParsingSignal == GetAttributeNameParsingSignal) {
-				temp_word = (string)malloc(sizeof(char) * (i-last+1) );
-				chtml_parser_create_substring(str, temp_word, last, i);
+				chtml_attribute_init(&temp_attr);
+				temp_attr->key = (string) malloc(sizeof(char) * (i-last+1));
+				chtml_parser_create_substring(str, temp_attr->key, last, i);
 				TagParsingSignal = GetAttributeValueParsingSignal;
 			} else if(TagParsingSignal == GetAttributeValueParsingSignal) {
 			} 
@@ -168,10 +162,10 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 				if(TagParsingSignal == GetEndTagNameParsingSignal) {
 					*last_element = chtml_element_stack_pop(el_stack);
 					*current_element = chtml_element_stack_last(el_stack);
+					free(temp_word);
 				} else {
 					chtml_parser_add_element(current_element, last_element, el_stack, temp_word);
 				}
-				free(temp_word);
 			} else {
 			}
 			break;
@@ -211,9 +205,14 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element_st
 		last = str[i];
 	}
 	content[size] = '\0';
-	if(size)
-		chtml_element_add_content(current_element, content, size);
-	free(content);
+	if(size) {
+		if((*current_element)->content) { // if the element already has content, append to it
+			int curr_s = strlen((*current_element)->content);
+			(*current_element)->content = realloc((*current_element)->content, sizeof(char) * (curr_s + size + 1));
+			strcat((*current_element)->content, content);
+			free(content);
+		} else (*current_element)->content = content;
+	} else free(content);
 	return 0;
 }
 
