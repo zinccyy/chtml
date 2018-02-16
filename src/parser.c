@@ -28,16 +28,13 @@ int is_token(char c) {
 }
 
 void chtml_parser_create_substring(const char* str, string temp, int s, int e) {
-	int i;
-	for(i = 0; i < e-s; i++)
-		temp[i] = str[i+s];
-	temp[i] = '\0';
+	memcpy(temp, &str[s], e-s);
+	temp[e-s] = '\0';
 }
 
 int chtml_parser_add_element(chtml_element** current_element, chtml_element** last_element, chtml_element_stack* el_stack, string name) {
 	chtml_element* el;
 	chtml_element_init(&el);
-	//chtml_element_set_tag(&el, name);
 	el->tag = (char*) name;
 
 	if(el_stack->elements_size) { // check if the last element on the stack has children and if so, add the new element as the next of the last child
