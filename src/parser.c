@@ -177,7 +177,7 @@ int chtml_parser_parse_tag(chtml_element** current_element, chtml_element** last
 	return ret_value;
 }
 
-int chtml_parser_parse_content(chtml_element** current_element, chtml_element_stack* el_stack, const char* str, int start, int end) {
+int chtml_parser_parse_content(chtml_element** current_element, chtml_element** last_element, chtml_element_stack* el_stack, const char* str, int start, int end, char only_content) {
 	int i, size = 0;
 	char last;
 	string content = (string) malloc(sizeof(char) * (end-start+1));
@@ -202,13 +202,20 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element_st
 		last = str[i];
 	}
 	content[size] = '\0';
+	content = realloc(content, size+1);
 	if(size) {
-		if((*current_element)->content) { // if the element already has content, append to it
-			int curr_s = strlen((*current_element)->content);
-			(*current_element)->content = realloc((*current_element)->content, sizeof(char) * (curr_s + size + 1));
-			strcat((*current_element)->content, content);
-			free(content);
-		} else (*current_element)->content = content;
+		if(only_content) {
+			chtml_parser_add_element(current_element, last_element, el_stack, NULL);
+			(*current_element)->content = content;
+			*last_element = chtml_element_stack_pop(el_stack); // pop the created element from the stack and end
+		} else {
+			/*if((*current_element)->content) { // if the element already has content, append to it
+				int curr_s = strlen((*current_element)->content);
+				(*current_element)->content = realloc((*current_element)->content, sizeof(char) * (curr_s + size + 1));
+				strcat((*current_element)->content, content);
+				free(content);
+			} else */(*current_element)->content = content;
+		}
 	} else free(content);
 	return 0;
 }
@@ -236,7 +243,14 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 				} else {
 					end = i;
 					if(end-start > 0 && *current_element != NULL) {
-						chtml_parser_parse_content(current_element, &el_stack, str, start, end);
+						if((*current_element)->content == NULL)
+							chtml_parser_parse_content(current_element, &last_element, &el_stack, str, start, end, 0);
+						else {
+							// create an empty element, and add the content to it
+							//chtml_parser_add_element(current_element, &last_element, &el_stack, NULL);
+							chtml_parser_parse_content(current_element, &last_element, &el_stack, str, start, end, 1);
+							//last_element = chtml_element_stack_pop(&el_stack); // pop the created element from the stack and end
+						}
 					}
 					start = i+1;
 					if(chtml_parser_parse_tag(current_element, &last_element, &el_stack, str, start, &end, &line_number)) {
