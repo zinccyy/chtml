@@ -5,7 +5,7 @@ SRCDIR = ./src
 OBJDIR = ./obj
 BINDIR = ./bin
 SRCFILES = $(wildcard $(SRCDIR)/*.c)
-OBJFILES = $(wildcard $(OBJDIR)/*.o)
+OBJFILES = $(wildcard $(SRCDIR)/*.o)
 LIBNAME = lib/lib$(PROJECTNAME).a
 BINARY  = bin/$(PROJECTNAME)
 
