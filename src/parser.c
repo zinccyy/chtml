@@ -209,12 +209,7 @@ int chtml_parser_parse_content(chtml_element** current_element, chtml_element** 
 			(*current_element)->content = content;
 			*last_element = chtml_element_stack_pop(el_stack); // pop the created element from the stack and end
 		} else {
-			/*if((*current_element)->content) { // if the element already has content, append to it
-				int curr_s = strlen((*current_element)->content);
-				(*current_element)->content = realloc((*current_element)->content, sizeof(char) * (curr_s + size + 1));
-				strcat((*current_element)->content, content);
-				free(content);
-			} else */(*current_element)->content = content;
+			(*current_element)->content = content;
 		}
 	} else free(content);
 	return 0;
@@ -234,7 +229,7 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 	
 	for(i = 0; str[i]; i++) {
 		if(str[i] == '<') {
-			if(CurrentParsingSignal != CommentParsingSignal) {
+			if(CurrentParsingSignal != CommentParsingSignal && CurrentParsingSignal != ScriptParsingSignal) {
 				// check for comment
 				if(str[i+1] == '!' && str[i+2] == '-' && str[i+3] == '-') {
 					LastParsingSignal = CurrentParsingSignal;
@@ -262,6 +257,37 @@ int chtml_parser_parse_string(const char* str, chtml_element** root_element) {
 					i = end;
 					if(!root_bkp && *current_element) { // if root is created store its pointer into a backup for later access
 						root_bkp = *current_element;
+					}
+					if(*current_element && strcmp((*current_element)->tag, "script") == 0) {
+						CurrentParsingSignal = ScriptParsingSignal;
+					}
+				}
+			} else if(CurrentParsingSignal == ScriptParsingSignal) {
+				if(str[i+1] == '/') {
+					end = i;
+					if(end-start > 0 && *current_element != NULL) {
+						if((*current_element)->content == NULL)
+							chtml_parser_parse_content(current_element, &last_element, &el_stack, str, start, end, 0);
+						else {
+							// create an empty element, and add the content to it
+							//chtml_parser_add_element(current_element, &last_element, &el_stack, NULL);
+							chtml_parser_parse_content(current_element, &last_element, &el_stack, str, start, end, 1);
+							//last_element = chtml_element_stack_pop(&el_stack); // pop the created element from the stack and end
+						}
+					}
+					start = i+1;
+					if(chtml_parser_parse_tag(current_element, &last_element, &el_stack, str, start, &end, &line_number)) {
+						return_value = 1;
+						break;
+					}
+					CurrentParsingSignal = ContentParsingSignal;
+					start = end+1;
+					i = end;
+					if(!root_bkp && *current_element) { // if root is created store its pointer into a backup for later access
+						root_bkp = *current_element;
+					}
+					if(*current_element && strcmp((*current_element)->tag, "script") == 0) {
+						CurrentParsingSignal = ScriptParsingSignal;
 					}
 				}
 			}

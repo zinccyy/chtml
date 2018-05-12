@@ -17,6 +17,9 @@ void chtml_element_init(chtml_element**);
 void chtml_element_set_tag(chtml_element**, string);
 void chtml_element_add_content(chtml_element**, string, size_t);
 void chtml_element_add_attribute(chtml_element**, chtml_attribute**);
+
+chtml_attribute* chtml_element_get_attribute(chtml_element*, const char* );
+
 void chtml_element_delete(chtml_element**);
 
 #endif

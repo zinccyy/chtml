@@ -32,6 +32,13 @@ void chtml_element_add_attribute(chtml_element** el, chtml_attribute** attr) {
 	(*el)->attributes_size+=1;
 }
 
+chtml_attribute* chtml_element_get_attribute(chtml_element* el, const char* attr_n) {
+    for(int i = 0; i < el->attributes_size; i++)   
+        if(strcmp(el->attributes[i]->key, attr_n) == 0)
+            return el->attributes[i];
+    return NULL;
+}
+
 void chtml_element_delete(chtml_element** el) {
 	if(*el == NULL) return;
 	chtml_element_delete(&(*el)->child);
